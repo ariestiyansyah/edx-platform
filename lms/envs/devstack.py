@@ -12,7 +12,7 @@ MEDIA_ROOT = "/edx/var/edxapp/uploads"
 DEBUG = True
 USE_I18N = True
 TEMPLATE_DEBUG = True
-SITE_NAME = 'localhost:8000'
+SITE_NAME = 'courses-local.npoed.ru:8000'
 PLATFORM_NAME = ENV_TOKENS.get('PLATFORM_NAME', 'Devstack')
 # By default don't use a worker, execute tasks as if they were local functions
 CELERY_ALWAYS_EAGER = True
@@ -50,7 +50,7 @@ MIDDLEWARE_CLASSES += (
     'django_comment_client.utils.QueryCountDebugMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
 )
-INTERNAL_IPS = ('127.0.0.1',)
+#INTERNAL_IPS = ('127.0.0.1',)
 
 DEBUG_TOOLBAR_PANELS = (
     'debug_toolbar.panels.versions.VersionsPanel',
@@ -193,3 +193,36 @@ except ImportError:
 MODULESTORE = convert_module_store_setting_if_needed(MODULESTORE)
 
 SECRET_KEY = '85920908f28904ed733fe576320db18cabd7b6cd'
+
+
+
+EVMS_URL = None
+
+SSO_NPOED_URL = 'http://sso-local.npoed.ru:8081'
+
+SSO_API_URL = "%s/api-edx/" % SSO_NPOED_URL  #'http://sso.rnoep.raccoongang.com/api-edx/'
+
+
+SOCIAL_AUTH_EXCLUDE_URL_PATTERN = r'^/admin'
+SOCIAL_AUTH_LOGOUT_URL = "%s/logout/" % SSO_NPOED_URL #'http://sso.rnoep.raccoongang.com/logout/'
+SOCIAL_AUTH_RAISE_EXCEPTIONS = True
+
+MIDDLEWARE_CLASSES += ('sso_edx_npoed.middleware.SeamlessAuthorization', )
+
+# We should login always with npoed-sso
+# from sso_edx_npoed.backends.npoed import NpoedBackend
+# NpoedBackend.name
+SSO_NPOED_BACKEND_NAME = 'sso_npoed-oauth2'
+LOGIN_URL = '/auth/login/%s/' % SSO_NPOED_BACKEND_NAME
+
+# Add extra dir for mako templates finder
+# '/edx/app/edxapp/venvs/edxapp/src/npoed-sso-edx-client/sso_edx_npoed/templates')
+NPOED_MAKO_TEMPLATES = ENV_TOKENS.get('NPOED_MAKO_TEMPLATES', [])
+
+#TEMPLATE_DIRS.insert(0, '/edx/app/edxapp/venvs/edxapp/src/npoed-sso-edx-client/sso_edx_npoed')
+MAKO_TEMPLATES['main'] = NPOED_MAKO_TEMPLATES + MAKO_TEMPLATES['main']
+
+EMAIL_HOST = 'localhost'
+EMAIL_PORT = 1025
+
+TENDER_DOMAIN = None
