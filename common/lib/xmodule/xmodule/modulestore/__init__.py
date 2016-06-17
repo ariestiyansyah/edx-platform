@@ -178,7 +178,7 @@ class BulkOperationsMixin(object):
         self.signal_handler = None
 
     @contextmanager
-    def bulk_operations(self, course_id, emit_signals=True):
+    def bulk_operations(self, course_id, emit_signals=True, date_shift=None):
         """
         A context manager for notifying the store of bulk operations. This affects only the current thread.
 
@@ -189,7 +189,7 @@ class BulkOperationsMixin(object):
             self._begin_bulk_operation(course_id)
             yield
         finally:
-            self._end_bulk_operation(course_id, emit_signals)
+            self._end_bulk_operation(course_id, emit_signals, date_shift)
 
     # the relevant type of bulk_ops_record for the mixin (overriding classes should override
     # this variable)
@@ -261,7 +261,7 @@ class BulkOperationsMixin(object):
         """
         pass
 
-    def _end_bulk_operation(self, structure_key, emit_signals=True):
+    def _end_bulk_operation(self, structure_key, emit_signals=True, date_shift=None):
         """
         End the active bulk operation on structure_key (course or library key).
         """
@@ -283,7 +283,7 @@ class BulkOperationsMixin(object):
         if bulk_ops_record.active:
             return
 
-        dirty = self._end_outermost_bulk_operation(bulk_ops_record, structure_key)
+        dirty = self._end_outermost_bulk_operation(bulk_ops_record, structure_key, date_shift)
 
         # The bulk op has ended. However, the signal tasks below still need to use the
         # built-up bulk op information (if the signals trigger tasks in the same thread).

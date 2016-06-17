@@ -194,7 +194,7 @@ def structure_from_mongo(structure, course_context=None):
         return structure
 
 
-def structure_to_mongo(structure, course_context=None):
+def structure_to_mongo(structure, course_context=None, date_shift=None):
     """
     Converts the 'blocks' key from a map {BlockKey: block_data} to
         a list [block_data], inserting BlockKey.type as 'block_type'
@@ -213,11 +213,20 @@ def structure_to_mongo(structure, course_context=None):
 
         new_structure = dict(structure)
         new_structure['blocks'] = []
+        if date_shift:
+            new_start = date_shift
+            old_start = structure['blocks'][structure['root']].fields['start']
+            delta = new_start - old_start
 
         for block_key, block in structure['blocks'].iteritems():
             new_block = dict(block.to_storable())
             new_block.setdefault('block_type', block_key.type)
             new_block['block_id'] = block_key.id
+            if date_shift:
+                if new_block['fields'].get('start'):
+                    new_block['fields']['start'] += delta
+                if new_block['fields'].get('due'):
+                    new_block['fields']['due'] += delta
             new_structure['blocks'].append(new_block)
 
         return new_structure
@@ -418,13 +427,13 @@ class MongoConnection(object):
             tagger.measure("structures", len(docs))
             return docs
 
-    def insert_structure(self, structure, course_context=None):
+    def insert_structure(self, structure, course_context=None, date_shift=None):
         """
         Insert a new structure into the database.
         """
         with TIMER.timer("insert_structure", course_context) as tagger:
             tagger.measure("blocks", len(structure["blocks"]))
-            self.structures.insert(structure_to_mongo(structure, course_context))
+            self.structures.insert(structure_to_mongo(structure, course_context, date_shift))
 
     def get_course_index(self, key, ignore_case=False):
         """

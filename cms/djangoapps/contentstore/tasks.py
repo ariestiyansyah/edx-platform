@@ -5,6 +5,7 @@ import json
 import logging
 from celery.task import task
 from celery.utils.log import get_task_logger
+import pytz
 from datetime import datetime
 from pytz import UTC
 
@@ -34,13 +35,36 @@ def rerun_course(source_course_key_string, destination_course_key_string, user_i
         # deserialize the payload
         source_course_key = CourseKey.from_string(source_course_key_string)
         destination_course_key = CourseKey.from_string(destination_course_key_string)
+
+        if fields:
+            json_fields = json.loads(fields)
+            date_shift = json_fields.pop('shift_date')
+            time_shift = json_fields.pop('shift_time')
+            if date_shift and time_shift:
+                try:
+                    date_shift = pytz.utc.localize(datetime.strptime(" ".join([date_shift, time_shift]), "%m/%d/%Y %H:%M"))
+                except ValueError:
+                    date_shift = None
+                    logging.info("Invalid datetime will be ignored")
+            elif date_shift:
+                try:
+                    date_shift = pytz.utc.localize(datetime.strptime(date_shift, "%m/%d/%Y"))
+                except ValueError:
+                    date_shift = None
+                    logging.info("Invalid date will be ignored")
+            else:
+                date_shift = None
+            if date_shift and date_shift < pytz.utc.localize(datetime(1900, 1, 2)):
+                date_shift = None
+                logging.info("Datetime earliest than 01/02/1900 will be ignored")
+            fields = json.dumps(json_fields)
         fields = deserialize_fields(fields) if fields else None
 
         # use the split modulestore as the store for the rerun course,
         # as the Mongo modulestore doesn't support multiple runs of the same course.
         store = modulestore()
         with store.default_store('split'):
-            store.clone_course(source_course_key, destination_course_key, user_id, fields=fields)
+            store.clone_course(source_course_key, destination_course_key, user_id, fields=fields, date_shift=date_shift)
 
         # set initial permissions for the user to access the course.
         initialize_permissions(destination_course_key, User.objects.get(id=user_id))

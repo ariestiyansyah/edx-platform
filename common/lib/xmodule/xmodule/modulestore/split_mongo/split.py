@@ -235,7 +235,7 @@ class SplitBulkWriteMixin(BulkOperationsMixin):
         bulk_write_record.index = copy.deepcopy(bulk_write_record.initial_index)
         bulk_write_record.course_key = course_key
 
-    def _end_outermost_bulk_operation(self, bulk_write_record, structure_key):
+    def _end_outermost_bulk_operation(self, bulk_write_record, structure_key, date_shift=None):
         """
         End the active bulk write operation on structure_key (course or library key).
         """
@@ -247,7 +247,7 @@ class SplitBulkWriteMixin(BulkOperationsMixin):
             dirty = True
 
             try:
-                self.db_connection.insert_structure(bulk_write_record.structures[_id], bulk_write_record.course_key)
+                self.db_connection.insert_structure(bulk_write_record.structures[_id], bulk_write_record.course_key, date_shift)
             except DuplicateKeyError:
                 # We may not have looked up this structure inside this bulk operation, and thus
                 # didn't realize that it was already in the database. That's OK, the store is
@@ -1795,7 +1795,7 @@ class SplitMongoModuleStore(SplitBulkWriteMixin, ModuleStoreWriteBase):
         if source_index is None:
             raise ItemNotFoundError("Cannot find a course at {0}. Aborting".format(source_course_id))
 
-        with self.bulk_operations(dest_course_id):
+        with self.bulk_operations(dest_course_id, date_shift=kwargs.get('date_shift')):
             new_course = self.create_course(
                 dest_course_id.org, dest_course_id.course, dest_course_id.run,
                 user_id,
